@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Tienda - Inventario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9;
+        }
+
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Estilos básicos para el modal */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            /* Se oculta por defecto */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 border-b-2 border-indigo-500 pb-2">Panel de Control de Tienda
+        </h1>
+
+        <div id="register-section" class="bg-white p-6 rounded-xl card mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Registrar Nuevo Producto</h2>
+            <form id="product-form" class="space-y-4">
+                <div>
+                    <label for="product-name" class="block text-sm font-medium text-gray-700">Nombre del
+                        Producto</label>
+                    <input type="text" id="product-name" required
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="product-price" class="block text-sm font-medium text-gray-700">Precio ($)</label>
+                    <input type="number" id="product-price" required min="0.01" step="0.01"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="product-stock" class="block text-sm font-medium text-gray-700">Stock Inicial
+                        (Unidades)</label>
+                    <input type="number" id="product-stock" required min="0"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="product-description" class="block text-sm font-medium text-gray-700">Descripción
+                        Breve</label>
+                    <textarea id="product-description" required rows="2"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"></textarea>
+                </div>
+
+                <div>
+                    <label for="product-public-id" class="block text-sm font-medium text-gray-700">Identificador de
+                        Imagen (Public ID de Cloudinary)</label>
+                    <input type="text" id="product-public-id" required
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"
+                        placeholder="Ej: COLLAR-001">
+                </div>
+                <button type="submit"
+                    class="w-full py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                    Registrar Producto
+                </button>
+            </form>
+            <div id="message-box" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+        </div>
+
+        <div id="inventory-section" class="bg-white p-6 rounded-xl card">
+            <h2 class="text-2xl font-semibold text-green-600 mb-4">Inventario Actual</h2>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                ID</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Imagen</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Producto</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Precio</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Stock</th>
+                            <th scope="col"
+                                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-table-body" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                </table>
+            </div>
+
+            <p id="empty-inventory" class="text-center text-gray-500 py-6 hidden">
+                No hay productos registrados en el inventario.
+            </p>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-xl font-semibold text-indigo-600 mb-4">Editar Producto #<span id="edit-product-id"></span>
+            </h2>
+            <form id="edit-product-form" class="space-y-3">
+                <input type="hidden" id="edit-id-hidden">
+
+                <div>
+                    <label for="edit-name" class="block text-sm font-medium text-gray-700">Nombre</label>
+                    <input type="text" id="edit-name" required
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="edit-price" class="block text-sm font-medium text-gray-700">Precio ($)</label>
+                    <input type="number" id="edit-price" required min="0.01" step="0.01"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="edit-stock" class="block text-sm font-medium text-gray-700">Stock</label>
+                    <input type="number" id="edit-stock" required min="0"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+                <div>
+                    <label for="edit-description" class="block text-sm font-medium text-gray-700">Descripción</label>
+                    <textarea id="edit-description" required rows="2"
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border"></textarea>
+                </div>
+                <div>
+                    <label for="edit-public-id" class="block text-sm font-medium text-gray-700">ID de Imagen</label>
+                    <input type="text" id="edit-public-id" required
+                        class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border">
+                </div>
+
+                <div class="flex justify-end space-x-3 mt-4">
+                    <button type="button" onclick="closeEditModal()"
+                        class="py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150 ease-in-out">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                        Guardar Cambios
+                    </button>
+                </div>
+            </form>
+            <div id="edit-message-box" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+        </div>
+    </div>
+    <script>
+        // Determinar base del API:
+        const apiParam = new URLSearchParams(window.location.search).get('api');
+        let apiBase = window.API_BASE || apiParam || 'http://localhost:3000';
+        console.log('API base usada:', apiBase);
+
+        // ** FUNCIONES DE MANEJO DE INVENTARIO (NUEVAS Y MODIFICADAS) **
+
+        // ----------------------------------------------------
+        // FUNCIÓN ELIMINAR (DELETE)
+        // ----------------------------------------------------
+        async function deleteProduct(productId) {
+            if (!confirm(`¿Estás seguro de que quieres eliminar el producto con ID ${productId}? Esta acción es irreversible.`)) {
+                return;
+            }
+
+            try {
+                const url = `${apiBase}/api/products/${productId}`;
+                console.log('DELETE', url);
+
+                const res = await fetch(url, { method: 'DELETE' });
+
+                console.log('DELETE', url, '=>', res.status);
+
+                if (res.ok || res.status === 204) {
+                    alert(`Producto ${productId} eliminado correctamente.`);
+                    loadProducts(); // Recargar la tabla
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert(`Error al eliminar: ${err.error || 'Fallo desconocido'}. Verifica que no tenga pedidos asociados.`);
+                }
+            } catch (err) {
+                console.error('Error de conexión al eliminar:', err);
+                alert('Error de conexión con la API.');
+            }
+        }
+
+        // ----------------------------------------------------
+        // FUNCIONES DE EDICIÓN (PUT/PATCH)
+        // ----------------------------------------------------
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+        }
+
+        async function openEditModal(productId) {
+            const msgbox = document.getElementById('edit-message-box');
+            msgbox.classList.add('hidden');
+
+            try {
+                const url = `${apiBase}/api/products/${productId}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('No se pudo obtener datos del producto');
+                const p = await res.json();
+
+                // Llenar el formulario del modal con los datos
+                document.getElementById('edit-product-id').textContent = p.id;
+                document.getElementById('edit-id-hidden').value = p.id;
+                document.getElementById('edit-name').value = p.name;
+                document.getElementById('edit-price').value = p.price;
+                document.getElementById('edit-stock').value = p.stock;
+                document.getElementById('edit-description').value = p.description;
+                // El campo en la DB se llama 'cloudinary_public_id', la API lo devuelve con ese nombre.
+                document.getElementById('edit-public-id').value = p.cloudinary_public_id || '';
+
+                document.getElementById('edit-modal').style.display = 'flex'; // Mostrar modal
+            } catch (err) {
+                console.error('Error al abrir modal de edición:', err);
+                alert('Error al cargar los datos del producto para editar.');
+            }
+        }
+
+        document.getElementById('edit-product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msgbox = document.getElementById('edit-message-box');
+            const productId = document.getElementById('edit-id-hidden').value;
+
+
+            const payload = {
+                name: document.getElementById('edit-name').value.trim(),
+                price: parseFloat(document.getElementById('edit-price').value),
+                stock: parseInt(document.getElementById('edit-stock').value, 10),
+                description: document.getElementById('edit-description').value.trim(),
+                image_id: document.getElementById('edit-public-id').value.trim()
+            };
+
+            try {
+                const url = `${apiBase}/api/products/${productId}`;
+                const res = await fetch(url, {
+                    method: 'PUT', // Usamos PUT para la actualización completa
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!res.ok) throw new Error('Error al guardar cambios.');
+
+                msgbox.textContent = 'Producto actualizado correctamente.';
+                msgbox.className = 'mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800';
+                msgbox.classList.remove('hidden');
+
+                setTimeout(() => {
+                    closeEditModal();
+                    loadProducts();
+                }, 1000);
+
+            } catch (err) {
+                console.error('Error al guardar edición:', err);
+                msgbox.textContent = 'Error al actualizar producto. Verifica los datos y la API.';
+                msgbox.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800';
+                msgbox.classList.remove('hidden');
+            }
+        });
+
+        // ----------------------------------------------------
+        // FUNCIÓN loadProducts (MODIFICADA para añadir botones)
+        // ----------------------------------------------------
+
+        async function loadProducts() {
+            try {
+                const url = apiBase + '/api/products';
+                console.log('GET', url);
+                const res = await fetch(url);
+                console.log('GET', url, '=>', res.status);
+                if (!res.ok) throw new Error('No se pudo obtener productos (status ' + res.status + ')');
+                const products = await res.json();
+                const tbody = document.getElementById('inventory-table-body');
+                const empty = document.getElementById('empty-inventory');
+                tbody.innerHTML = '';
+                if (!products || products.length === 0) {
+                    empty.classList.remove('hidden');
+                    return;
+                }
+                empty.classList.add('hidden');
+
+                products.forEach(p => {
+                    let displayImageUrl = p.image_url;
+
+                    if (displayImageUrl && displayImageUrl.includes('res.cloudinary.com')) {
+                        displayImageUrl = displayImageUrl.replace('/upload/', '/upload/w_40,h_40,c_fill/');
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${displayImageUrl ? `<img src="${displayImageUrl}" alt="${p.name}" class="h-10 w-10 object-cover rounded-md border">` : 'N/A'}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.name}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.price}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${p.stock}</td>
+                        
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium flex space-x-2">
+                            <button onclick="openEditModal(${p.id})" 
+                                    class="text-indigo-600 hover:text-indigo-900 text-sm font-semibold">
+                                Editar
+                            </button>
+                            <button onclick="deleteProduct(${p.id})" 
+                                    class="text-red-600 hover:text-red-900 text-sm font-semibold">
+                                Eliminar
+                            </button>
+                        </td>
+                        `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Asegúrate de que este manejador de submit del formulario de REGISTRO no cambie
+        document.getElementById('product-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('product-name').value.trim();
+            const price = parseFloat(document.getElementById('product-price').value);
+            const stock = parseInt(document.getElementById('product-stock').value, 10);
+            const description = document.getElementById('product-description').value.trim();
+            const publicId = document.getElementById('product-public-id').value.trim();
+
+            const msgbox = document.getElementById('message-box');
+
+            const payload = {
+                name: name,
+                description: description,
+                price: price,
+                stock: stock,
+                image_id: publicId
+            };
+
+            try {
+                const url = apiBase + '/api/products';
+                console.log('POST', url, payload);
+
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                console.log('POST', url, '=>', res.status);
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    msgbox.textContent = err.error || 'Error al guardar producto (status ' + res.status + ')';
+                    msgbox.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800';
+                    msgbox.classList.remove('hidden');
+                    return;
+                }
+
+                msgbox.textContent = 'Producto registrado correctamente.';
+                msgbox.className = 'mt-4 p-3 rounded-lg text-sm bg-green-100 text-green-800';
+                msgbox.classList.remove('hidden');
+                document.getElementById('product-form').reset();
+                loadProducts();
+            } catch (err) {
+                console.error(err);
+                msgbox.textContent = 'Error de conexión con la API.';
+                msgbox.className = 'mt-4 p-3 rounded-lg text-sm bg-red-100 text-red-800';
+                msgbox.classList.remove('hidden');
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', loadProducts);
+    </script>
+
+</body>
+
+</html>
